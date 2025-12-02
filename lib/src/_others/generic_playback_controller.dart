@@ -227,11 +227,14 @@ class GenericPlaybackController extends OmniPlaybackController {
       videoController.value.isInitialized &&
       (audioController?.value.isInitialized ?? true);
 
-  /// Returns true if both video and audio (if present) are currently playing.
+  /// Returns true if video or audio is currently playing.
+  ///
+  /// Uses OR logic instead of AND to ensure pause works even when
+  /// audio/video are out of sync (e.g., one is buffering while other plays).
   @override
   bool get isPlaying =>
-      videoController.value.isPlaying &&
-      (audioController?.value.isPlaying ?? true);
+      videoController.value.isPlaying ||
+      (audioController?.value.isPlaying ?? false);
 
   /// Returns true if the video is buffering.
   @override
@@ -301,14 +304,12 @@ class GenericPlaybackController extends OmniPlaybackController {
   @override
   Future<void> play({bool useGlobalController = true}) async {
     _hasStarted = true;
-    if (useGlobalController && _globalController != null) {
-      return await _globalController.requestPlay(this);
-    } else {
-      await Future.wait([
-        if (audioController != null) audioController!.play(),
-        videoController.play(),
-      ]);
-    }
+
+    // Directly play the underlying controllers
+    await Future.wait([
+      if (audioController != null) audioController!.play(),
+      videoController.play(),
+    ]);
   }
 
   /// Pauses playback.
@@ -317,14 +318,11 @@ class GenericPlaybackController extends OmniPlaybackController {
   /// pause requests will be routed through it.
   @override
   Future<void> pause({bool useGlobalController = true}) async {
-    if (useGlobalController && _globalController != null) {
-      return await _globalController.requestPause();
-    } else {
-      await Future.wait([
-        if (audioController != null) audioController!.pause(),
-        videoController.pause(),
-      ]);
-    }
+    // Directly pause the underlying controllers
+    await Future.wait([
+      if (audioController != null) audioController!.pause(),
+      videoController.pause(),
+    ]);
   }
 
   /// Restarts playback from the beginning.
